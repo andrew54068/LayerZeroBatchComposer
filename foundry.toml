@@ -1,6 +1,30 @@
 [profile.default]
 src = "src"
 out = "out"
+test = 'test/foundry'
+cache_path = 'cache'
 libs = ["lib"]
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+remappings = [
+    # Due to a misconfiguration of solidity-bytes-utils, an outdated version
+    # of forge-std is being dragged in
+    # 
+    # To remedy this, we'll remap the ds-test and forge-std imports to ou own versions
+    '@layerzerolabs/lz-evm-protocol-v2=lib/LayerZero-v2/packages/layerzero-v2/evm/protocol',
+    '@layerzerolabs/lz-evm-oapp-v2=lib/LayerZero-v2/packages/layerzero-v2/evm/oapp',
+    '@openzeppelin/=lib/@openzeppelin/',
+    'forge-std/=lib/forge-std/src/',
+]
+
+[rpc_endpoints]
+optimismSepolia = "${OPTIMISM_SEPOLIA_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+arbitrumSepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
+arbitrum = "${ARBITRUM_RPC_URL}"
+polygonAmoy = "${POLYGON_AMOY_RPC_URL}"
+polygon = "${POLYGON_RPC_URL}"
+
+[etherscan]
+optimismSepolia = { key = "${OP_ETHERSCAN_API_KEY}" }
+arbitrumSepolia = { key = "${ARB_ETHERSCAN_API_KEY}" }
+polygonAmoy = { key = "${POLYGONSCAN_API_KEY}" }
