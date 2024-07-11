@@ -7,6 +7,7 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ILayerZeroComposer} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroComposer.sol";
 import {OFTComposeMsgCodec} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oft/libs/OFTComposeMsgCodec.sol";
+import {IOFT} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oft/interfaces/IOFT.sol";
 import {Withdrawable} from "./utils/Withdrawable.sol";
 
 contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
@@ -16,10 +17,16 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
         bytes data;
     }
 
-    address public immutable endpoint;
-    address public immutable stargate;
+    uint256 public fee = 0;
 
-    event ReceivedOnDestination(address token);
+    address public immutable endpoint;
+    address public immutable stargateOApp;
+
+    event ReceivedOnDestination(
+        address token,
+        uint256 amount,
+        bytes _extraData
+    );
 
     /// @notice Emitted whenever a transaction is processed successfully from this wallet. Includes
     ///  both simple send ether transactions, as well as other smart contract invocations.
@@ -28,10 +35,10 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
 
     constructor(
         address _endpoint,
-        address _stargate
+        address _stargateOApp
     ) Withdrawable() Pausable() {
         endpoint = _endpoint;
-        stargate = _stargate;
+        stargateOApp = _stargateOApp;
     }
 
     function lzCompose(
@@ -41,22 +48,24 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
         address _executor,
         bytes calldata _extraData
     ) external payable whenNotPaused {
-        require(_from == stargate, "!stargate");
-        require(msg.sender == endpoint, "!endpoint");
+        require(_from == stargateOApp, "_from should be the StargateOApp.");
+        require(
+            msg.sender == endpoint,
+            "Can only be called by LayerZero endpoint."
+        );
 
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
         bytes memory _composeMessage = OFTComposeMsgCodec.composeMsg(_message);
 
-        // (
-        //     address _tokenReceiver,
-        //     address _oftOnDestination,
-        //     address _tokenOut,
-        //     uint _amountOutMinDest
-        // ) = abi.decode(_composeMessage, (address, address, address, uint));
+        emit ReceivedOnDestination(
+            IOFT(stargateOApp).token(),
+            amountLD,
+            _extraData
+        );
 
-        // address[] memory path = new address[](2);
-        // path[0] = _oftOnDestination;
-        // path[1] = _tokenOut;
+        if (fee > 0) {
+            IERC20(IOFT(stargateOApp).token()).transfer(owner(), fee);
+        }
 
         internalInvokeCall(_composeMessage);
     }
@@ -157,9 +166,9 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
 
     function encodeOperation(
         Operation[] memory _operations
-    ) external pure returns (bytes memory) {
+    ) external pure returns (bytes memory _data) {
         // concate all encode packed operations into bytes in assembly
-        bytes memory _data;
+        // bytes memory _data;
         for (uint256 i = 0; i < _operations.length; i++) {
             _data = abi.encodePacked(
                 _data,
@@ -171,7 +180,10 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                 )
             );
         }
-        return _data;
+    }
+
+    function updateFee(uint256 _fee) external onlyOwner {
+        fee = _fee;
     }
 
     fallback() external payable {}

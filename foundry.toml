@@ -1,7 +1,8 @@
 [profile.default]
+solc-version = '0.8.22'
 src = "src"
 out = "out"
-test = 'test/foundry'
+test = 'test'
 cache_path = 'cache'
 libs = ["lib"]
 
@@ -10,10 +11,13 @@ remappings = [
     # of forge-std is being dragged in
     # 
     # To remedy this, we'll remap the ds-test and forge-std imports to ou own versions
+    'forge-std/=lib/forge-std/src/',
     '@layerzerolabs/lz-evm-protocol-v2=lib/LayerZero-v2/packages/layerzero-v2/evm/protocol',
     '@layerzerolabs/lz-evm-oapp-v2=lib/LayerZero-v2/packages/layerzero-v2/evm/oapp',
-    '@openzeppelin/=lib/@openzeppelin/',
-    'forge-std/=lib/forge-std/src/',
+    '@layerzerolabs/lz-evm-messagelib-v2=lib/LayerZero-v2/packages/layerzero-v2/evm/messagelib',
+    '@stargatefinance/stg-evm-v2=lib/stargate-v2/packages/stg-evm-v2',
+    '@openzeppelin/=lib/openzeppelin-contracts/',
+    'solidity-bytes-utils/=lib/solidity-bytes-utils',
 ]
 
 [rpc_endpoints]
@@ -25,6 +29,6 @@ polygonAmoy = "${POLYGON_AMOY_RPC_URL}"
 polygon = "${POLYGON_RPC_URL}"
 
 [etherscan]
-optimismSepolia = { key = "${OP_ETHERSCAN_API_KEY}" }
+optimismSepolia = { key = "${OP_ETHERSCAN_API_KEY}", url = "${OPTIMISM_SEPOLIA_ETHERSCAN_API}" }
 arbitrumSepolia = { key = "${ARB_ETHERSCAN_API_KEY}" }
 polygonAmoy = { key = "${POLYGONSCAN_API_KEY}" }
