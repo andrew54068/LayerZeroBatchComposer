@@ -186,6 +186,14 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
         fee = _fee;
     }
 
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
     fallback() external payable {}
 
     receive() external payable {}
