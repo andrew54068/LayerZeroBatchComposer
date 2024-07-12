@@ -15,7 +15,7 @@ for more info, please refer to [Stargate Composability](https://stargateprotocol
 ### Mainnet
 
 ### Polygon
-[UniversalComposer](https://polygonscan.com/address/0x533e75a2879bd2F2eAA8780f8CA1684dbC189362#code)
+[UniversalComposer](https://polygonscan.com/address/0xb7b40da2a45f75e89b52b19b153f7acfd1ee6c5b#code)
 
 
 ## Usage
@@ -97,6 +97,7 @@ source .env
 
 forge create src/UniversalComposer.sol:UniversalComposer \
 --rpc-url polygon \
+--via-ir \
 --constructor-args 0x1a44076050125825900e736c501f859c50fE728c 0xd47b03ee6d86Cf251ee7860FB2ACf9f91B9fD4d7 \
 --private-key $PRIVATE_KEY \
 --etherscan-api-key $POLYGONSCAN_API_KEY \
