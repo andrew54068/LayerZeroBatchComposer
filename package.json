@@ -1,0 +1,17 @@
+{
+  "name": "composer-estimate-gas",
+  "version": "1.0.0",
+  "main": "tools/index.ts",
+  "author": "andrew54068 <andrew0424718012@yahoo.com.tw>",
+  "license": "MIT",
+  "scripts": {
+    "start": "tsx tools/index.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.16.2",
+    "viem": "^2.17.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10"
+  }
+}
