@@ -23,7 +23,8 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
     event ReceivedOnDestination(
         address token,
         uint256 amount,
-        bytes _extraData
+        bytes _extraData,
+        bytes _message
     );
 
     /// @notice Emitted whenever a transaction is processed successfully from this wallet. Includes
@@ -58,7 +59,8 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
         emit ReceivedOnDestination(
             IOFT(stargateOApp).token(),
             amountLD,
-            _extraData
+            _extraData,
+            _message
         );
 
         internalInvokeCall(_composeMessage);
@@ -161,8 +163,6 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
     function encodeOperation(
         Operation[] memory _operations
     ) external pure returns (bytes memory _data) {
-        // concate all encode packed operations into bytes in assembly
-        // bytes memory _data;
         for (uint256 i = 0; i < _operations.length; i++) {
             _data = abi.encodePacked(
                 _data,
