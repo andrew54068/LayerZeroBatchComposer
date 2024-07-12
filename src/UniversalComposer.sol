@@ -17,8 +17,6 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
         bytes data;
     }
 
-    uint256 public fee = 0;
-
     address public immutable endpoint;
     address public immutable stargateOApp;
 
@@ -62,10 +60,6 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
             amountLD,
             _extraData
         );
-
-        if (fee > 0) {
-            IERC20(IOFT(stargateOApp).token()).transfer(owner(), fee);
-        }
 
         internalInvokeCall(_composeMessage);
     }
@@ -180,10 +174,6 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                 )
             );
         }
-    }
-
-    function updateFee(uint256 _fee) external onlyOwner {
-        fee = _fee;
     }
 
     function pause() public onlyOwner {
