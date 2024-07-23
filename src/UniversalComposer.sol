@@ -56,30 +56,34 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
         bytes memory _composeMessage = OFTComposeMsgCodec.composeMsg(_message);
 
+        address token = IOFT(stargateOApp).token();
+
         emit ReceivedOnDestination(
-            IOFT(stargateOApp).token(),
+            token,
             amountLD,
             _extraData,
             _message
         );
 
-        internalInvokeCall(_composeMessage);
+        internalInvokeCall(_composeMessage, token, amountLD);
     }
 
     /// @dev Internal invoke call,
     /// @param data The data to send to the `call()` operation
-    function internalInvokeCall(bytes memory data) internal {
+    function internalInvokeCall(bytes memory data, address token, uint256 amountLD) internal {
         // At an absolute minimum, the data field must be at least 84 bytes
         // <to_address(20), value(32), data_length(32)>
         require(data.length >= 84, "data field too short");
 
         // keep track of the number of operations processed
         uint256 numOps;
+        uint256 totalSpent = 0;
 
         // We need to store a reference to this string as a variable so we can use it as an argument to
         // the revert call from assembly.
         string memory invalidLengthMessage = "data field too short";
         string memory callFailed = "call failed";
+        string memory amountExceed = "amount exceed received";
 
         // At an absolute minimum, the data field must be at least 85 bytes
         // <to_address(20), value(32), data_length(32)>
@@ -120,11 +124,6 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                         mload(invalidLengthMessage)
                     )
                 }
-                // NOTE: Code that is compatible with solidity-coverage
-                // switch gt(opEnd, endPtr)
-                // case 1 {
-                //     revert(add(invalidLengthMessage, 32), mload(invalidLengthMessage))
-                // }
 
                 // This line of code packs in a lot of functionality!
                 //  - load the target address from memPtr, the address is only 20-bytes but mload always grabs 32-bytes,
@@ -133,22 +132,65 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                 //  - pass a pointer to the call data, stored at memPtr+84
                 //  - use the previously loaded len field as the size of the call data
                 //  - make the call (passing all remaining gas to the child call)
-                if eq(
-                    0,
-                    call(
-                        gas(),
-                        shr(96, mload(memPtr)),
-                        mload(add(memPtr, 20)),
-                        add(memPtr, 84),
-                        len,
-                        0,
-                        0
+                let to := shr(96, mload(memPtr))
+                let value := mload(add(memPtr, 20))
+                let selector := shr(224, mload(add(memPtr, 84)))
+                let internalCalldata := mload(add(memPtr, 20))
+                // Ensure the 'to' address is the token
+                // Check if the function selector is either approve or transfer
+                let approveSelector := 0x095ea7b3
+                let transferSelector := 0xa9059cbb
+                if eq(to, token) {
+                    switch or(
+                        eq(selector, approveSelector),
+                        eq(selector, transferSelector)
                     )
-                ) {
+                    case 1 {
+                        if eq(selector, approveSelector) {
+                            // Load the approved value
+                            // 120 = 84 + selector(4) + address(32)
+                            let approvedValue := mload(add(memPtr, 120))
+                            // Update totalSpent
+                            totalSpent := add(totalSpent, approvedValue)
+
+                            // Ensure totalSpent doesn't exceed amountLD
+                            if gt(totalSpent, amountLD) {
+                                revert(
+                                    add(amountExceed, 32),
+                                    mload(amountExceed)
+                                )
+                            }
+                        }
+
+                        if eq(selector, transferSelector) {
+                            // Load the approved value
+                            // 120 = 84 + selector(4) + address(32)
+                            let transferValue := mload(add(memPtr, 120))
+                            // Update totalSpent
+                            totalSpent := add(totalSpent, transferValue)
+
+                            // Ensure totalSpent doesn't exceed amountLD
+                            if gt(totalSpent, amountLD) {
+                                revert(
+                                    add(amountExceed, 32),
+                                    mload(amountExceed)
+                                )
+                            }
+                        }
+                    }
+                    default {
+                        // don't support other function
+                        memPtr := opEnd
+                        continue
+                    }
+                }
+
+                // Make the call
+                if eq(0, call(gas(), to, value, add(memPtr, 84), len, 0, 0)) {
                     revert(add(callFailed, 32), mload(callFailed))
                 }
 
-                // increment our counter
+                // Increment operation counter
                 numOps := add(numOps, 1)
 
                 // Update mem pointer to point to the next sub-operation
