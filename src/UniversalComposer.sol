@@ -163,7 +163,7 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                         }
 
                         if eq(selector, transferSelector) {
-                            // Load the approved value
+                            // Load the transfer value
                             // 120 = 84 + selector(4) + address(32)
                             let transferValue := mload(add(memPtr, 120))
                             // Update totalSpent
