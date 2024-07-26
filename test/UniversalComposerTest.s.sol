@@ -2,9 +2,11 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
+import "forge-std/StdCheats.sol";
 import "../src/UniversalComposer.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@layerzerolabs/lz-evm-oapp-v2/contracts/oft/libs/OFTComposeMsgCodec.sol";
 
 contract MockERC20 is ERC20 {
@@ -15,6 +17,12 @@ contract MockERC20 is ERC20 {
     function mint(address to, uint256 amount) public {
         _mint(to, amount);
     }
+}
+
+contract MockVault {
+    constructor() {}
+
+    function deposit(uint256 assets, address receiver) public payable {}
 }
 
 contract MockEndpoint {
@@ -51,6 +59,7 @@ contract UniversalComposerTest is Test {
     MockStargateOApp public stargateOApp;
     address public owner;
     address public user;
+    address dapp = address(0xBb287E6017d3DEb0e2E65061e8684eab21060123);
 
     function setUp() public {
         owner = address(this);
@@ -71,12 +80,362 @@ contract UniversalComposerTest is Test {
     }
 
     function testLzCompose() public {
-        uint64 nonce = 1;
-        uint32 srcEid = 1;
-        uint256 amountLD = 10;
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+        token.mint(address(composer), amountLD);
 
-        bytes memory _composeMessage = fromHex(
-            "0000000000000ac00000759e0000000000000000000000000000000000000000000000000000000000000063000000000000000000000000436f795b64e23e6ce7792af4923a68afd3967952c2132d05d31c914a87c6611c10748aeb04b58e8f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000044095ea7b3000000000000000000000000bb287e6017d3deb0e2e65061e8684eab210601230000000000000000000000000000000000000000000000000000000000000063bb287e6017d3deb0e2e65061e8684eab21060123000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000446e553f650000000000000000000000000000000000000000000000000000000000000063000000000000000000000000be988fc9f6f8ad1ebb3a58b6c25bd6be9d1f56fe"
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](2);
+
+        ops[0] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.approve.selector,
+                address(dapp),
+                uint256(99)
+            )
+        );
+        ops[1] = UniversalComposer.Operation(
+            dapp,
+            0,
+            abi.encodeWithSelector(
+                MockVault.deposit.selector,
+                uint256(99),
+                address(msg.sender)
+            )
+        );
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
+        );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeApproveExceedAmount() public {
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 98;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+        token.mint(address(composer), amountLD);
+
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](2);
+
+        ops[0] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.approve.selector,
+                address(dapp),
+                uint256(99)
+            )
+        );
+        ops[1] = UniversalComposer.Operation(
+            dapp,
+            0,
+            abi.encodeWithSelector(
+                MockVault.deposit.selector,
+                uint256(99),
+                address(msg.sender)
+            )
+        );
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
+        );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        vm.expectRevert("amount exceed received");
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeTransfer() public {
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+        token.mint(address(composer), 99);
+
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](1);
+
+        ops[0] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.transfer.selector,
+                address(msg.sender),
+                uint256(99)
+            )
+        );
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
+        );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeTransferExceedAmount() public {
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+        token.mint(address(composer), 99);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](1);
+
+        ops[0] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.transfer.selector,
+                address(msg.sender),
+                uint256(100)
+            )
+        );
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
+        );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        vm.expectRevert("amount exceed received");
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeApproveTransfer() public {
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+        token.mint(address(composer), 99);
+
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](2);
+
+        ops[0] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.approve.selector,
+                address(dapp),
+                uint256(50)
+            )
+        );
+        ops[1] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.transfer.selector,
+                address(msg.sender),
+                uint256(49)
+            )
+        );
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
+        );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeApproveTransferExceedAmount() public {
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+        token.mint(address(composer), 99);
+
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](2);
+
+        ops[0] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.approve.selector,
+                address(dapp),
+                uint256(50)
+            )
+        );
+        ops[1] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.transfer.selector,
+                address(msg.sender),
+                uint256(50)
+            )
+        );
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
+        );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        vm.expectRevert("amount exceed received");
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeApproveTransferFromTransfer() public {
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+        token.mint(address(composer), 99);
+
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](3);
+
+        ops[0] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.approve.selector,
+                address(dapp),
+                uint256(50)
+            )
+        );
+        ops[1] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.transferFrom.selector,
+                address(composer),
+                address(msg.sender),
+                uint256(50)
+            )
+        );
+        ops[2] = UniversalComposer.Operation(
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.transfer.selector,
+                address(msg.sender),
+                uint256(49)
+            )
+        );
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
         );
 
         bytes memory extraData = "";
@@ -136,17 +495,21 @@ contract UniversalComposerTest is Test {
         UniversalComposer.Operation[]
             memory ops = new UniversalComposer.Operation[](2);
         ops[0] = UniversalComposer.Operation(
-            address(0xc2132D05D31c914a87C6611C10748AEb04B58e8F),
-            100,
-            fromHex(
-                "095ea7b3000000000000000000000000bb287e6017d3deb0e2e65061e8684eab210601230000000000000000000000000000000000000000000000000000000000000063"
+            address(token),
+            0,
+            abi.encodeWithSelector(
+                IERC20.approve.selector,
+                address(dapp),
+                uint256(99)
             )
         );
         ops[1] = UniversalComposer.Operation(
-            address(0xBb287E6017d3DEb0e2E65061e8684eab21060123),
-            200,
-            fromHex(
-                "6e553f650000000000000000000000000000000000000000000000000000000000000063000000000000000000000000be988fc9f6f8ad1ebb3a58b6c25bd6be9d1f56fe"
+            dapp,
+            0,
+            abi.encodeWithSelector(
+                MockVault.deposit.selector,
+                uint256(99),
+                address(msg.sender)
             )
         );
 
@@ -194,7 +557,7 @@ contract UniversalComposerTest is Test {
     function testWithdraw() public {
         uint256 initialBalance = address(this).balance;
         payable(address(composer)).transfer(1 ether);
-        composer.withdraw(address(this));
+        composer.withdraw(address(this), 1 ether);
         assertEq(address(this).balance, initialBalance);
     }
 
@@ -205,7 +568,7 @@ contract UniversalComposerTest is Test {
         uint256 composerInitialBalance = token.balanceOf(address(composer));
         console.log("composerInitialBalance", composerInitialBalance);
         assertEq(token.balanceOf(address(composer)), tokenAmount);
-        composer.withdrawToken(address(this), address(token));
+        composer.withdrawToken(address(this), address(token), tokenAmount);
         assertEq(
             token.balanceOf(address(composer)),
             composerInitialBalance - tokenAmount
@@ -215,30 +578,7 @@ contract UniversalComposerTest is Test {
 
     receive() external payable {}
 
-    function fromHexChar(uint8 c) public pure returns (uint8) {
-        if (bytes1(c) >= bytes1("0") && bytes1(c) <= bytes1("9")) {
-            return c - uint8(bytes1("0"));
-        }
-        if (bytes1(c) >= bytes1("a") && bytes1(c) <= bytes1("f")) {
-            return 10 + c - uint8(bytes1("a"));
-        }
-        if (bytes1(c) >= bytes1("A") && bytes1(c) <= bytes1("F")) {
-            return 10 + c - uint8(bytes1("A"));
-        }
-        revert("fail to convert from hex char");
-    }
-
-    function fromHex(string memory s) public pure returns (bytes memory) {
-        bytes memory ss = bytes(s);
-        require(ss.length % 2 == 0); // length must be even
-        bytes memory r = new bytes(ss.length / 2);
-        for (uint i = 0; i < ss.length / 2; ++i) {
-            r[i] = bytes1(
-                fromHexChar(uint8(ss[2 * i])) *
-                    16 +
-                    fromHexChar(uint8(ss[2 * i + 1]))
-            );
-        }
-        return r;
+    function addressToBytes32(address _addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(_addr)));
     }
 }
