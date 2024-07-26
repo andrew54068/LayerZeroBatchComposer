@@ -58,19 +58,18 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
 
         address token = IOFT(stargateOApp).token();
 
-        emit ReceivedOnDestination(
-            token,
-            amountLD,
-            _extraData,
-            _message
-        );
+        emit ReceivedOnDestination(token, amountLD, _extraData, _message);
 
         internalInvokeCall(_composeMessage, token, amountLD);
     }
 
     /// @dev Internal invoke call,
     /// @param data The data to send to the `call()` operation
-    function internalInvokeCall(bytes memory data, address token, uint256 amountLD) internal {
+    function internalInvokeCall(
+        bytes memory data,
+        address token,
+        uint256 amountLD
+    ) internal {
         // At an absolute minimum, the data field must be at least 84 bytes
         // <to_address(20), value(32), data_length(32)>
         require(data.length >= 84, "data field too short");
@@ -135,7 +134,6 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                 let to := shr(96, mload(memPtr))
                 let value := mload(add(memPtr, 20))
                 let selector := shr(224, mload(add(memPtr, 84)))
-                let internalCalldata := mload(add(memPtr, 20))
                 // Ensure the 'to' address is the token
                 // Check if the function selector is either approve or transfer
                 let approveSelector := 0x095ea7b3
@@ -146,36 +144,15 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                         eq(selector, transferSelector)
                     )
                     case 1 {
-                        if eq(selector, approveSelector) {
-                            // Load the approved value
-                            // 120 = 84 + selector(4) + address(32)
-                            let approvedValue := mload(add(memPtr, 120))
-                            // Update totalSpent
-                            totalSpent := add(totalSpent, approvedValue)
+                        // Load the token value
+                        // 120 = 84 + selector(4) + address(32)
+                        let tokenValue := mload(add(memPtr, 120))
+                        // Update totalSpent
+                        totalSpent := add(totalSpent, tokenValue)
 
-                            // Ensure totalSpent doesn't exceed amountLD
-                            if gt(totalSpent, amountLD) {
-                                revert(
-                                    add(amountExceed, 32),
-                                    mload(amountExceed)
-                                )
-                            }
-                        }
-
-                        if eq(selector, transferSelector) {
-                            // Load the transfer value
-                            // 120 = 84 + selector(4) + address(32)
-                            let transferValue := mload(add(memPtr, 120))
-                            // Update totalSpent
-                            totalSpent := add(totalSpent, transferValue)
-
-                            // Ensure totalSpent doesn't exceed amountLD
-                            if gt(totalSpent, amountLD) {
-                                revert(
-                                    add(amountExceed, 32),
-                                    mload(amountExceed)
-                                )
-                            }
+                        // Ensure totalSpent doesn't exceed amountLD
+                        if gt(totalSpent, amountLD) {
+                            revert(add(amountExceed, 32), mload(amountExceed))
                         }
                     }
                     default {

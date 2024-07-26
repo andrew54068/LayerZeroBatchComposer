@@ -557,7 +557,7 @@ contract UniversalComposerTest is Test {
     function testWithdraw() public {
         uint256 initialBalance = address(this).balance;
         payable(address(composer)).transfer(1 ether);
-        composer.withdraw(address(this));
+        composer.withdraw(address(this), 1 ether);
         assertEq(address(this).balance, initialBalance);
     }
 
@@ -568,7 +568,7 @@ contract UniversalComposerTest is Test {
         uint256 composerInitialBalance = token.balanceOf(address(composer));
         console.log("composerInitialBalance", composerInitialBalance);
         assertEq(token.balanceOf(address(composer)), tokenAmount);
-        composer.withdrawToken(address(this), address(token));
+        composer.withdrawToken(address(this), address(token), tokenAmount);
         assertEq(
             token.balanceOf(address(composer)),
             composerInitialBalance - tokenAmount

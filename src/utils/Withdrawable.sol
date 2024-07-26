@@ -13,17 +13,16 @@ contract Withdrawable is Ownable {
 
     constructor() Ownable(msg.sender) {}
 
-    function withdraw(address beneficiary) public onlyOwner {
-        uint256 amount = address(this).balance;
+    function withdraw(address beneficiary, uint256 amount) public onlyOwner {
         (bool sent, ) = beneficiary.call{value: amount}("");
         if (!sent) revert FailedToWithdrawEth(msg.sender, beneficiary, amount);
     }
 
     function withdrawToken(
         address beneficiary,
-        address token
+        address token,
+        uint256 amount
     ) public onlyOwner {
-        uint256 amount = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransfer(beneficiary, amount);
     }
 }
