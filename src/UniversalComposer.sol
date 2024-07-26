@@ -83,6 +83,7 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
         string memory invalidLengthMessage = "data field too short";
         string memory callFailed = "call failed";
         string memory amountExceed = "amount exceed received";
+        string memory methodNotAllowed = "method not allowed";
 
         // At an absolute minimum, the data field must be at least 85 bytes
         // <to_address(20), value(32), data_length(32)>
@@ -156,9 +157,8 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                         }
                     }
                     default {
-                        // don't support other function
-                        memPtr := opEnd
-                        continue
+                        // don't support other functions
+                        revert(add(methodNotAllowed, 32), mload(methodNotAllowed))
                     }
                 }
 
