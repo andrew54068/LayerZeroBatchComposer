@@ -386,7 +386,7 @@ contract UniversalComposerTest is Test {
         );
     }
 
-    function testLzComposeApproveTransferFromTransfer() public {
+    function testLzComposeTransferFromNotAllowed() public {
         uint64 nonce = 2752;
         uint32 srcEid = 30110;
         uint256 amountLD = 99;
@@ -396,36 +396,42 @@ contract UniversalComposerTest is Test {
         console.log("msg.sender", msg.sender);
 
         UniversalComposer.Operation[]
-            memory ops = new UniversalComposer.Operation[](3);
+            memory ops = new UniversalComposer.Operation[](1);
 
         ops[0] = UniversalComposer.Operation(
-            address(token),
-            0,
-            abi.encodeWithSelector(
-                IERC20.approve.selector,
-                address(dapp),
-                uint256(50)
-            )
-        );
-        ops[1] = UniversalComposer.Operation(
             address(token),
             0,
             abi.encodeWithSelector(
                 IERC20.transferFrom.selector,
                 address(composer),
                 address(msg.sender),
-                uint256(50)
+                uint256(99)
             )
         );
-        ops[2] = UniversalComposer.Operation(
-            address(token),
-            0,
-            abi.encodeWithSelector(
-                IERC20.transfer.selector,
-                address(msg.sender),
-                uint256(49)
-            )
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
         );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        vm.expectRevert("method not allowed");
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
 
     function testLzComposeTransferNativeExceedAmount() public {
         stargateOApp = new MockStargateOApp(address(0));
