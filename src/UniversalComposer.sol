@@ -134,31 +134,48 @@ contract UniversalComposer is ILayerZeroComposer, Pausable, Withdrawable {
                 //  - make the call (passing all remaining gas to the child call)
                 let to := shr(96, mload(memPtr))
                 let value := mload(add(memPtr, 20))
-                let selector := shr(224, mload(add(memPtr, 84)))
-                // Ensure the 'to' address is the token
-                // Check if the function selector is either approve or transfer
-                let approveSelector := 0x095ea7b3
-                let transferSelector := 0xa9059cbb
-                if eq(to, token) {
-                    switch or(
-                        eq(selector, approveSelector),
-                        eq(selector, transferSelector)
-                    )
-                    case 1 {
-                        // Load the token value
-                        // 120 = 84 + selector(4) + address(32)
-                        let tokenValue := mload(add(memPtr, 120))
-                        // Update totalSpent
-                        totalSpent := add(totalSpent, tokenValue)
 
-                        // Ensure totalSpent doesn't exceed amountLD
-                        if gt(totalSpent, amountLD) {
-                            revert(add(amountExceed, 32), mload(amountExceed))
-                        }
+                switch eq(token, 0x0000000000000000000000000000000000000000)
+                case 1 {
+                    totalSpent := add(totalSpent, value)
+                    // Check if value exceeds amountLD when token is native token
+                    if gt(totalSpent, amountLD) {
+                        revert(add(amountExceed, 32), mload(amountExceed))
                     }
-                    default {
-                        // don't support other functions
-                        revert(add(methodNotAllowed, 32), mload(methodNotAllowed))
+                }
+                default {
+                    let selector := shr(224, mload(add(memPtr, 84)))
+                    // Ensure the 'to' address is the token
+                    // Check if the function selector is either approve or transfer
+                    let approveSelector := 0x095ea7b3
+                    let transferSelector := 0xa9059cbb
+                    if eq(to, token) {
+                        switch or(
+                            eq(selector, approveSelector),
+                            eq(selector, transferSelector)
+                        )
+                        case 1 {
+                            // Load the token value
+                            // 120 = 84 + selector(4) + address(32)
+                            let tokenValue := mload(add(memPtr, 120))
+                            // Update totalSpent
+                            totalSpent := add(totalSpent, tokenValue)
+
+                            // Ensure totalSpent doesn't exceed amountLD
+                            if gt(totalSpent, amountLD) {
+                                revert(
+                                    add(amountExceed, 32),
+                                    mload(amountExceed)
+                                )
+                            }
+                        }
+                        default {
+                            // don't support other functions
+                            revert(
+                                add(methodNotAllowed, 32),
+                                mload(methodNotAllowed)
+                            )
+                        }
                     }
                 }
 
