@@ -21,14 +21,21 @@ remappings = [
 ]
 
 [rpc_endpoints]
-optimismSepolia = "${OPTIMISM_SEPOLIA_RPC_URL}"
-optimism = "${OPTIMISM_RPC_URL}"
-arbitrumSepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
-arbitrum = "${ARBITRUM_RPC_URL}"
 polygonAmoy = "${POLYGON_AMOY_RPC_URL}"
+arbitrumSepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
+optimismSepolia = "${OPTIMISM_SEPOLIA_RPC_URL}"
+
+mainnet = "${ETHERUM_RPC_URL}"
 polygon = "${POLYGON_RPC_URL}"
+arbitrum = "${ARBITRUM_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
 
 [etherscan]
 optimismSepolia = { key = "${OP_ETHERSCAN_API_KEY}", url = "${OPTIMISM_SEPOLIA_ETHERSCAN_API}" }
 arbitrumSepolia = { key = "${ARB_ETHERSCAN_API_KEY}" }
 polygonAmoy = { key = "${POLYGONSCAN_API_KEY}" }
+
+mainnet = { key = "${ETHERSCAN_API_KEY}", url = "${ETHERSCAN_API}" }
+polygon = { key = "${POLYGONSCAN_API_KEY}", url = "${POLYGONSCAN_API}" }
+arbitrum = { key = "${ARB_ETHERSCAN_API_KEY}", url = "${ARBISCAN_API}" }
+optimism = { key = "${OP_ETHERSCAN_API_KEY}", url = "${OPTIMISM_ETHERSCAN_API}" }

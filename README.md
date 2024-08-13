@@ -116,6 +116,56 @@ forge script ./script/BridgeMainnetTokenScript.s.sol:BridgeMainnetTokenScript \
 [LayerZero Scan](https://layerzeroscan.com/tx/0xa65cb9ec887bf618ace915442dd378b143ec38c1853b416c9f78f4e4c4d1b557)\
 [Success Composer Tx](https://polygonscan.com/tx/0x77d75ac347d7f2479138a18145d20ebac923d6c4a6e1fdb207b57c83343ec9b8)
 
+### Multichain deployment
+Make sure there are no broadcast/multi/DeployComposerScript.s.sol-latest under broadcast/multi first, otherwise you might get response:
+- server returned an error response: error code -32000: nonce too low
+- No associated wallet for addresses: [0x436f795b64e23e6ce7792af4923a68afd3967952]. Unlocked wallets: []
+```shell
+forge script ./script/DeployComposerScript.s.sol:DeployComposerScript \
+--verify \
+--resume \
+--via-ir \
+--broadcast \
+-vvvv \
+--sender 0x436f795B64E23E6cE7792af4923A68AFD3967952
+```
+
+To resume verifying the above deployed contracts
+```shell
+forge script ./script/DeployComposerScript.s.sol:DeployComposerScript \
+--verify \
+--resume \
+--multi \
+--via-ir \
+-vvvv \
+--sender 0x436f795B64E23E6cE7792af4923A68AFD3967952 \
+--private-key $PRIVATE_KEY
+```
+
+If you encountered `Invalid API Key` error even if the api key is correct try below.
+```shell
+forge verify-contract \
+0x648CAd82944eDe9149556bd01fD9B3F437A87B9e \
+--via-ir \
+--chain optimism \
+--etherscan-api-key $OP_ETHERSCAN_API_KEY \
+src/UniversalComposer.sol:UniversalComposer \
+--constructor-args $(cast abi-encode "constructor(address,address)" 0x1a44076050125825900e736c501f859c50fE728c 0xe8CDF27AcD73a434D661C84887215F7598e7d0d3)
+```
+
+If still no luck, we should verify manually by outputing the standard-json-input. \
+remember to add `--via-ir` otherwise it will fail.
+```shell
+forge verify-contract \
+0x648CAd82944eDe9149556bd01fD9B3F437A87B9e \
+--via-ir \
+--show-standard-json-input \
+--chain optimism \
+--etherscan-api-key $OP_ETHERSCAN_API_KEY \
+src/UniversalComposer.sol:UniversalComposer \
+--constructor-args $(cast abi-encode "constructor(address,address)" 0x1a44076050125825900e736c501f859c50fE728c 0xe8CDF27AcD73a434D661C84887215F7598e7d0d3)
+```
+
 ### Test
 
 ```shell

@@ -6,32 +6,57 @@ import {MockUSDT} from "../src/MockUSDT.sol";
 import {MockYearnV3Vault} from "../src/MockYearnV3Vault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UniversalComposer} from "../src/UniversalComposer.sol";
+import {BaseDeployer} from "./BaseDeployer.s.sol";
 
-contract DeployComposerScript is Script {
-    // Endpoint addresses
-    address constant optimismSepoliaEndpoint =
-        0x6EDCE65403992e310A62460808c4b910D972f10f;
-
-    address constant usdtOptimismSepolia =
-        0x9352001271a0af0d09a4e7F6C431663A2D5AA9d2;
-
-    address constant stargateUSDTOAppOptimismSepolia =
-        0x0d7aB83370b492f2AB096c80111381674456e8d8; // StargatePoolUSDT Optimism Sepolia
-
+contract DeployComposerScript is Script, BaseDeployer {
     function setUp() public {}
 
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+        Chains[] memory deployForks = new Chains[](4);
+        deployForks[0] = Chains.Ethereum;
+        deployForks[1] = Chains.Polygon;
+        deployForks[2] = Chains.Arbitrum;
+        deployForks[3] = Chains.Optimism;
+        createDeployMultichain(deployForks);
+    }
 
+    function chainDeployUniversalComposer(
+        address endpoint,
+        address stargateOApp
+    ) public broadcast(vm.envUint("PRIVATE_KEY")) {
         UniversalComposer universalComposer = new UniversalComposer(
-            optimismSepoliaEndpoint,
-            stargateUSDTOAppOptimismSepolia
+            endpoint,
+            stargateOApp
         );
 
         address owner = universalComposer.owner();
         console.log(owner);
+    }
 
-        vm.stopBroadcast();
+    /// @dev Helper to iterate over chains and select fork.
+    /// @param deployForks The chains to deploy to.
+    function createDeployMultichain(Chains[] memory deployForks) public {
+        for (uint256 i; i < deployForks.length; ) {
+            createSelectFork(deployForks[i]);
+
+            Tokens[] memory tokens = supportTokens[deployForks[i]];
+
+            for (uint256 j; j < tokens.length; ) {
+                address stargateOApp = stargateOApps[deployForks[i]][tokens[j]];
+
+                chainDeployUniversalComposer(
+                    endpoints[deployForks[i]],
+                    stargateOApp
+                );
+
+                unchecked {
+                    ++j;
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 }
