@@ -386,7 +386,7 @@ contract UniversalComposerTest is Test {
         );
     }
 
-    function testLzComposeApproveTransferFromTransfer() public {
+    function testLzComposeTransferFromNotAllowed() public {
         uint64 nonce = 2752;
         uint32 srcEid = 30110;
         uint256 amountLD = 99;
@@ -396,36 +396,110 @@ contract UniversalComposerTest is Test {
         console.log("msg.sender", msg.sender);
 
         UniversalComposer.Operation[]
-            memory ops = new UniversalComposer.Operation[](3);
+            memory ops = new UniversalComposer.Operation[](1);
 
         ops[0] = UniversalComposer.Operation(
-            address(token),
-            0,
-            abi.encodeWithSelector(
-                IERC20.approve.selector,
-                address(dapp),
-                uint256(50)
-            )
-        );
-        ops[1] = UniversalComposer.Operation(
             address(token),
             0,
             abi.encodeWithSelector(
                 IERC20.transferFrom.selector,
                 address(composer),
                 address(msg.sender),
-                uint256(50)
+                uint256(99)
             )
         );
-        ops[2] = UniversalComposer.Operation(
-            address(token),
-            0,
-            abi.encodeWithSelector(
-                IERC20.transfer.selector,
-                address(msg.sender),
-                uint256(49)
-            )
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
         );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        vm.expectRevert("method not allowed");
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeTransferNativeExceedAmount() public {
+        stargateOApp = new MockStargateOApp(address(0));
+        composer = new UniversalComposer(
+            address(endpoint),
+            address(stargateOApp)
+        );
+
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+
+        vm.deal(address(composer), amountLD);
+
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](2);
+
+        ops[0] = UniversalComposer.Operation(address(msg.sender), 50, "");
+        ops[1] = UniversalComposer.Operation(address(msg.sender), 50, "");
+
+        bytes memory message = composer.encodeOperation(ops);
+
+        bytes memory packedMessage = abi.encodePacked(composeFrom, message);
+
+        bytes memory _composeMessage = OFTComposeMsgCodec.encode(
+            nonce,
+            srcEid,
+            amountLD,
+            packedMessage
+        );
+
+        bytes memory extraData = "";
+
+        vm.prank(address(endpoint));
+        vm.expectRevert("amount exceed received");
+        composer.lzCompose(
+            address(stargateOApp),
+            bytes32(0),
+            _composeMessage,
+            address(endpoint),
+            extraData
+        );
+    }
+
+    function testLzComposeTransferNative() public {
+        stargateOApp = new MockStargateOApp(address(0));
+        composer = new UniversalComposer(
+            address(endpoint),
+            address(stargateOApp)
+        );
+
+        uint64 nonce = 2752;
+        uint32 srcEid = 30110;
+        uint256 amountLD = 99;
+        bytes32 composeFrom = addressToBytes32(address(msg.sender));
+
+        vm.deal(address(composer), amountLD);
+
+        console.log("msg.sender", msg.sender);
+
+        UniversalComposer.Operation[]
+            memory ops = new UniversalComposer.Operation[](2);
+
+        ops[0] = UniversalComposer.Operation(address(msg.sender), 50, "");
+        ops[1] = UniversalComposer.Operation(address(msg.sender), 49, "");
 
         bytes memory message = composer.encodeOperation(ops);
 
