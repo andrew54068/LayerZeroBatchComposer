@@ -152,9 +152,21 @@ forge verify-contract \
 src/UniversalComposer.sol:UniversalComposer \
 --constructor-args $(cast abi-encode "constructor(address,address)" 0x1a44076050125825900e736c501f859c50fE728c 0xe8CDF27AcD73a434D661C84887215F7598e7d0d3)
 ```
+or 
+```shell
+forge script ./script/DeployComposerScript.s.sol:DeployComposerScript \
+--rpc-url $ARBITRUM_RPC_URL \
+--private-keys $PRIVATE_KEY \
+--etherscan-api-key $ARB_ETHERSCAN_API_KEY \
+--verify \
+--resume \
+--via-ir \
+-vvvv \
+--sender your_address
+```
 
 If still no luck, we should verify manually by outputing the standard-json-input. \
-remember to add `--via-ir` otherwise it will fail.
+remember to add `--via-ir` if used it to compile otherwise it will fail.
 ```shell
 forge verify-contract \
 0x648CAd82944eDe9149556bd01fD9B3F437A87B9e \

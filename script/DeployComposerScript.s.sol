@@ -2,9 +2,6 @@
 pragma solidity ^0.8.22;
 
 import {Script, console} from "forge-std/Script.sol";
-import {MockUSDT} from "../src/MockUSDT.sol";
-import {MockYearnV3Vault} from "../src/MockYearnV3Vault.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UniversalComposer} from "../src/UniversalComposer.sol";
 import {BaseDeployer} from "./BaseDeployer.s.sol";
 
